@@ -23,14 +23,35 @@ npm run dev
 
 - `GET /health` — Estado y versión de PostGIS.
 - `GET /lines` — Lista de líneas y sus direcciones.
+- `POST /shapes` — Crear/actualizar shape por dirección (acepta array de coords).
+- `GET /shapes/:line_direction_id` — Lista shapes de esa dirección (GeoJSON incluido).
 - `POST /routes/fastest` — Calcula candidatos y ordena por ETA (sin transbordo).
+- `GET /directions/:id/route` — Devuelve la geometría unificada (LineString/MultiLineString) de una dirección para dibujar en una sola llamada.
 
-Body ejemplo:
+### Ejemplo `GET /directions/:id/route`
+
+Respuesta:
 ```json
 {
-  "origin": {"lng": -66.16, "lat": -17.39},
-  "destination": {"lng": -66.15, "lat": -17.38},
-  "threshold_m": 120,
-  "walk_kmh": 4.8
+  "ok": true,
+  "direction": {
+    "id": 1,
+    "line_id": 10,
+    "line_name": "L134 Amarillo",
+    "code": "134",
+    "color_hex": "#FFC107",
+    "direction": "outbound",
+    "headsign": "Oeste → Centro"
+  },
+  "segments": 1,
+  "length_m_total": 5230,
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [[-66.19,-17.41],[-66.175,-17.405],[-66.16,-17.395],[-66.15,-17.39]]
+  }
 }
 ```
+
+Notas:
+- `geometry` puede ser `MultiLineString` si los tramos no son contiguos, o `LineString` si se pueden fusionar.
+- Si no hay shapes aún para esa dirección, `geometry` será `null`, `segments` será `0`.
