@@ -1,57 +1,209 @@
-# milinea-backend
+# Mi Línea Backend 🚌
 
-Backend Express + PostGIS para MVP de líneas en Cochabamba.
+API REST para el sistema de transporte urbano "Mi Línea" en La Paz, Bolivia. Permite gestionar líneas de transporte público y calcular rutas optimizadas con inteligencia artificial.
 
-## Variables de entorno
+## 🚀 Características
 
-- `PORT` (por defecto 3000)
-- `DB_URL` Ej.: `postgres://postgres:TU_PASSWORD@localhost:5432/milinea`
-- `MAPBOX_TOKEN` (para geocodificación/tiles desde backend si lo usas)
-- `GEMINI_KEY` (reservado para futuros usos)
-- `WALK_KMH` (opcional, por defecto 4.8)
-- `THRESHOLD_M` (opcional, por defecto 100)
+- ✅ Gestión de líneas de transporte público
+- ✅ Rutas geográficas por sentido (ida/vuelta)
+- ✅ Cálculo de rutas más rápidas con PostGIS
+- ✅ Chat inteligente con integración Gemini AI
+- ✅ Geocodificación con Mapbox
+- ✅ Base de datos PostgreSQL + PostGIS
 
-## Arranque
+## 📦 Descarga e Instalación
+
+### 1. Clonar el repositorio
 
 ```bash
+git clone https://github.com/SudoCode76/milinea-backend.git
+cd milinea-backend
+```
+
+### 2. Instalar dependencias
+```bash
 npm install
-cp .env.example .env
+```
+### 3. Iniciar servidor
+```bash
 npm run dev
 ```
 
-## Endpoints
+## 🧪 Ejemplo de uso en Postman
 
-- `GET /health` — Estado y versión de PostGIS.
-- `GET /lines` — Lista de líneas y sus direcciones.
-- `POST /shapes` — Crear/actualizar shape por dirección (acepta array de coords).
-- `GET /shapes/:line_direction_id` — Lista shapes de esa dirección (GeoJSON incluido).
-- `POST /routes/fastest` — Calcula candidatos y ordena por ETA (sin transbordo).
-- `GET /directions/:id/route` — Devuelve la geometría unificada (LineString/MultiLineString) de una dirección para dibujar en una sola llamada.
+A continuación se muestra cómo realizar las operaciones principales usando Postman:
 
-### Ejemplo `GET /directions/:id/route`
+### 1. Agregar una línea
 
-Respuesta:
+**Endpoint:** `POST http://localhost:3000/lines`
+
+**Body (JSON):**
+```json
+{
+  "code": "20",
+  "name": "20",
+  "color_hex": "#B727F5"
+}
+```
+
+**Respuesta esperada:**
 ```json
 {
   "ok": true,
-  "direction": {
-    "id": 1,
-    "line_id": 10,
-    "line_name": "L134 Amarillo",
-    "code": "134",
-    "color_hex": "#FFC107",
-    "direction": "outbound",
-    "headsign": "Oeste → Centro"
-  },
-  "segments": 1,
-  "length_m_total": 5230,
-  "geometry": {
-    "type": "LineString",
-    "coordinates": [[-66.19,-17.41],[-66.175,-17.405],[-66.16,-17.395],[-66.15,-17.39]]
+  "line": {
+    "id": "1",
+    "code": "20",
+    "name": "20",
+    "color_hex": "#B727F5",
+    "is_active": true,
+    "created_at": "2025-09-22T12:16:42.576Z",
+    "updated_at": "2025-09-22T12:16:42.576Z"
   }
 }
 ```
 
-Notas:
-- `geometry` puede ser `MultiLineString` si los tramos no son contiguos, o `LineString` si se pueden fusionar.
-- Si no hay shapes aún para esa dirección, `geometry` será `null`, `segments` será `0`.
+---
+
+### 2. Agregar ruta de ida
+
+**Endpoint:** `POST http://localhost:3000/line-routes`
+
+**Body (JSON):**
+```json
+{
+  "line_id": 1,
+  "direction": "outbound",
+  "featureCollection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [ -66.149227, -17.394477 ],
+            [ -66.149999, -17.390769 ],
+            [ -66.157989, -17.392381 ],
+            [ -66.158833, -17.392542 ],
+            [ -66.157964, -17.397702 ]
+          ]
+        },
+        "id": "ruta-ida"
+      }
+    ]
+  }
+}
+```
+
+**Respuesta esperada:**
+```json
+{
+  "ok": true,
+  "route": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "id": "1",
+        "properties": {},
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [ -66.149227, -17.394477 ],
+            [ -66.149999, -17.390769 ],
+            [ -66.157989, -17.392381 ],
+            [ -66.158833, -17.392542 ],
+            [ -66.157964, -17.397702 ]
+          ]
+        }
+      }
+    ]
+  },
+  "meta": {
+    "line_id": "1",
+    "direction": "outbound",
+    "length_m": 1956
+  }
+}
+```
+
+---
+
+### 3. Agregar ruta de vuelta
+
+**Endpoint:** `POST http://localhost:3000/line-routes`
+
+**Body (JSON):**
+```json
+{
+  "line_id": 1,
+  "direction": "inbound",
+  "featureCollection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [ -66.157681, -17.39936 ],
+            [ -66.156435, -17.399527 ],
+            [ -66.152235, -17.398504 ],
+            [ -66.150638, -17.398525 ],
+            [ -66.148319, -17.398379 ],
+            [ -66.144535, -17.396709 ],
+            [ -66.142457, -17.394851 ],
+            [ -66.141844, -17.393912 ],
+            [ -66.142522, -17.392263 ],
+            [ -66.142894, -17.391595 ]
+          ]
+        },
+        "id": "ruta-vuelta"
+      }
+    ]
+  }
+}
+```
+
+**Respuesta esperada:**
+```json
+{
+  "ok": true,
+  "route": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "id": "2",
+        "properties": {},
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [ -66.157681, -17.39936 ],
+            [ -66.156435, -17.399527 ],
+            [ -66.152235, -17.398504 ],
+            [ -66.150638, -17.398525 ],
+            [ -66.148319, -17.398379 ],
+            [ -66.144535, -17.396709 ],
+            [ -66.142457, -17.394851 ],
+            [ -66.141844, -17.393912 ],
+            [ -66.142522, -17.392263 ],
+            [ -66.142894, -17.391595 ]
+          ]
+        }
+      }
+    ]
+  },
+  "meta": {
+    "line_id": "1",
+    "direction": "inbound",
+    "length_m": 2158
+  }
+}
+```
+
+---
+
+Puedes copiar estos ejemplos en Postman, seleccionando el método POST, el endpoint correspondiente y el cuerpo en formato raw (JSON).
