@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const db = require('../db');
 
-// GET /lines -> solo catálogo de líneas (sin extras por dirección)
+// (ANTERIOR) GET /lines simple (lo conservamos por compatibilidad)
 router.get('/', async (_req, res) => {
     try {
         const { rows } = await db.query(`
@@ -15,7 +15,30 @@ router.get('/', async (_req, res) => {
     }
 });
 
-// POST /lines -> crea línea
+// NUEVO: catálogo de direcciones (una fila por outbound / inbound existentes)
+router.get('/directions', async (_req, res) => {
+    try {
+        const { rows } = await db.query(`
+      SELECT
+        lr.id AS line_direction_id,
+        l.id AS line_id,
+        l.code,
+        l.name AS line_name,
+        l.color_hex,
+        lr.direction,
+        CASE WHEN lr.direction='outbound' THEN 'Ida' ELSE 'Vuelta' END AS headsign
+      FROM lines l
+      JOIN line_routes lr ON lr.line_id = l.id
+      WHERE l.is_active
+      ORDER BY l.name ASC, l.code ASC, lr.direction ASC
+    `);
+        res.json({ ok: true, data: rows });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /lines (igual que antes)
 router.post('/', async (req, res) => {
     try {
         const { code, name, color_hex, is_active = true } = req.body || {};
@@ -37,7 +60,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /lines/:id/routes -> ambas rutas como FC (o null)
+// GET /lines/:id/routes (lo mantenemos)
 router.get('/:id/routes', async (req, res) => {
     try {
         const id = Number(req.params.id);
