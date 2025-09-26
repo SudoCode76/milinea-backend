@@ -15,10 +15,20 @@ router.get('/', async (_req, res) => {
     }
 });
 
-// NUEVO: catálogo de direcciones (una fila por outbound / inbound existentes)
-router.get('/directions', async (_req, res) => {
+/**
+ * GET /lines/directions?q=texto
+ * Devuelve una fila por cada dirección (outbound / inbound) activa.
+ * Si q se define, filtra por code, nombre de línea o headsign (Ida / Vuelta)
+ * y además permite coincidencias parciales (ILIKE).
+ */
+router.get('/directions', async (req, res) => {
     try {
-        const { rows } = await db.query(`
+        const qRaw = (req.query.q || '').toString().trim();
+        const hasQ = qRaw.length > 0;
+
+        // Usamos un parámetro sólo si hay búsqueda
+        // headsign se deriva del direction
+        let sql = `
       SELECT
         lr.id AS line_direction_id,
         l.id AS line_id,
@@ -30,9 +40,24 @@ router.get('/directions', async (_req, res) => {
       FROM lines l
       JOIN line_routes lr ON lr.line_id = l.id
       WHERE l.is_active
-      ORDER BY l.name ASC, l.code ASC, lr.direction ASC
-    `);
-        res.json({ ok: true, data: rows });
+    `;
+
+        const params = [];
+        if (hasQ) {
+            params.push(`%${qRaw}%`);
+            sql += `
+        AND (
+          l.code ILIKE $1
+          OR l.name ILIKE $1
+          OR (CASE WHEN lr.direction='outbound' THEN 'Ida' ELSE 'Vuelta' END) ILIKE $1
+        )
+      `;
+        }
+
+        sql += ` ORDER BY l.name ASC, l.code ASC, lr.direction ASC`;
+
+        const { rows } = await db.query(sql, params);
+        res.json({ ok: true, query: qRaw, data: rows });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }
@@ -60,7 +85,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /lines/:id/routes (lo mantenemos)
+// GET /lines/:id/routes (igual)
 router.get('/:id/routes', async (req, res) => {
     try {
         const id = Number(req.params.id);
